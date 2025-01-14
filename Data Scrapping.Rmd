@@ -1,0 +1,79 @@
+---
+title: "Data Scrapping"
+author: ""
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, comment = NA,
+                      fig.width = 6, fig.height = 6)
+```
+
+```{r}
+# Load required libraries
+library(rvest)
+library(dplyr)
+library(httr)
+library(tidyverse)
+
+# Base URL for the iPhone search results on Amazon India
+base_url <- "https://www.amazon.in/s?k=iphone&qid=1730566584&ref=sr_pg_"
+
+# Function to scrape each page
+scrape_page <- function(page_number) {
+  tryCatch({
+    # Construct the URL for the current page
+    url <- paste0(base_url, page_number)
+    print(paste("Scraping URL:", url))  # Debugging: Print the URL being scraped
+    
+    # Read the HTML content of the page
+    page <- read_html(GET(url, add_headers("User-Agent" = "Chrome/112.0.0.0 Safari/537.36")))
+    
+    # Extract the data from the page
+    Name <- page %>%
+      html_nodes(".a-color-base.a-text-normal") %>%
+      html_text(trim = TRUE)
+    
+    Rating <- page %>%
+      html_nodes(".a-icon-star-small") %>%
+      html_text(trim = TRUE)
+    
+    People <- page %>%
+      html_nodes(".s-link-style .s-underline-text") %>%
+      html_text(trim = TRUE)
+    
+    Price <- page %>%
+      html_nodes(".a-price-whole") %>%
+      html_text(trim = TRUE)
+    
+    Bought <- page %>%
+      html_nodes(".a-size-small+ .a-size-base .a-color-secondary") %>%
+      html_text(trim = TRUE)
+    
+    # Combine into a data frame
+    data <- data.frame(
+      Name = Name,
+      Rating = Rating,
+      People = People,
+      Price = Price,
+      Bought = Bought,
+      stringsAsFactors = FALSE
+    )
+    
+    return(data)
+    
+  }, error = function(e) {
+    message("Error on page: ", page_number)
+    message("Error details: ", e$message)  # Print the error message
+    return(NULL)
+  })
+}
+# Scrape all pages and combine the data into one data frame
+all_data <- lapply(1:num_pages, scrape_page) %>%
+  bind_rows()
+
+# Display the first few rows of the scraped data
+head(all_data)
+```
+
